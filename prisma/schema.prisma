@@ -1,0 +1,104 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id               String           @id @default(cuid())
+  name             String
+  email            String           @unique
+  passwordHash     String
+  dailyGoalMinutes Int              @default(15)
+  speechRate       Float            @default(0.9)
+  currentStreak    Int              @default(0)
+  longestStreak    Int              @default(0)
+  lastActivityDate DateTime?
+  xp               Int              @default(0)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  progress         LessonProgress[]
+  quizAttempts     QuizAttempt[]
+
+  @@index([xp(sort: Desc), currentStreak(sort: Desc)])
+}
+
+model Module {
+  id      String   @id
+  order   Int      @unique
+  title   String
+  titleHi String
+  desc    String
+  emoji   String
+  accent  String
+  lessons Lesson[]
+}
+
+model Lesson {
+  id        String           @id
+  moduleId  String
+  order     Int              @unique
+  title     String
+  titleHi   String
+  summary   String
+  concept   Json
+  formula   Json
+  examples  Json
+  signals   Json
+  rules     Json
+  mistakes  Json
+  module    Module           @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  questions QuizQuestion[]
+  progress  LessonProgress[]
+  attempts  QuizAttempt[]
+
+  @@index([moduleId, order])
+}
+
+model QuizQuestion {
+  id       String @id @default(cuid())
+  lessonId String
+  order    Int
+  question String
+  options  Json
+  answer   Int
+  explain  String
+  lesson   Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([lessonId, order])
+}
+
+model LessonProgress {
+  id             String    @id @default(cuid())
+  userId         String
+  lessonId       String
+  completed      Boolean   @default(false)
+  xpAwarded      Boolean   @default(false)
+  bestScore      Int?
+  totalQuestions Int?
+  lastVisitedAt  DateTime  @default(now())
+  completedAt    DateTime?
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson         Lesson    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@index([userId, lastVisitedAt(sort: Desc)])
+}
+
+model QuizAttempt {
+  id        String   @id @default(cuid())
+  userId    String
+  lessonId  String
+  score     Int
+  total     Int
+  passed    Boolean
+  answers   Json
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+}
